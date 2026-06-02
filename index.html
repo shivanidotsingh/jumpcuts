@@ -239,7 +239,7 @@
 
             try {
                 const query = `'${FOLDER_ID}' in parents and trashed=false`;
-                const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&spaces=drive&fields=files(id,name)&key=${API_KEY}`;
+                const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&spaces=drive&fields=files(id,name)&pageSize=1000&key=${API_KEY}`;
                 
                 const response = await fetch(url);
                 const data = await response.json();
