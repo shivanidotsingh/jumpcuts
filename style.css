@@ -22,15 +22,13 @@ body {
   width: 75%;
 }
 
-/* Alternate rhythm — shift every middle and last item slightly */
+/* Left-align all items */
 .gallery-item:nth-child(3n+2) {
   justify-self: center;
-  margin-top: 1.5rem;
 }
 
 .gallery-item:nth-child(3n) {
   justify-self: end;
-  margin-top: 0.5rem;
 }
 
 .gallery-item img {
