@@ -34,6 +34,39 @@ body {
   opacity: 0.85;
 }
 
+.gallery-item.is-loading {
+  background: linear-gradient(90deg, #eceae4 25%, #f2f0ea 50%, #eceae4 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+.gallery-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+
+.gallery-item.is-loaded img {
+  opacity: 1;
+}
+
+.gallery-item.is-loaded img:hover {
+  opacity: 0.85;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.scroll-sentinel {
+  grid-column: 1 / -1;
+  height: 1px;
+}
+
 .caption-display {
   position: fixed;
   bottom: 1.5rem;
