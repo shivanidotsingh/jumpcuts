@@ -23,6 +23,8 @@
     <script>
         const FOLDER_ID = '1K8wDo-TCUHcYsN5vpMK3l1lCf7dJFEzk';
         const API_KEY = 'AIzaSyBIIivqgiVOcjspHa9O9vHIDFtd0hujSgs';
+        const INITIAL_BATCH = 9;
+        const NEXT_BATCH = 9;
 
         // Order = display order (top to bottom, left to right).
         const images = [
@@ -191,7 +193,87 @@
         const galleryContainer = document.getElementById('gallery-container');
         const captionDisplay = document.getElementById('caption-display');
 
+        let resolvedItems = [];
+        let renderedCount = 0;
+        let sentinel = null;
+        let observer = null;
+
+        function createGalleryItem({ driveId, caption }) {
+            const item = document.createElement('div');
+            item.className = 'gallery-item is-loading';
+            if (caption) {
+                item.setAttribute('data-caption', caption);
+            }
+
+            const img = document.createElement('img');
+            img.alt = caption || '';
+            img.decoding = 'async';
+
+            img.onload = () => {
+                item.classList.remove('is-loading');
+                item.classList.add('is-loaded');
+            };
+
+            img.onerror = () => {
+                item.classList.remove('is-loading');
+                item.classList.add('is-loaded');
+            };
+
+            img.src = `https://lh3.googleusercontent.com/d/${driveId}=w1000`;
+            item.appendChild(img);
+            return item;
+        }
+
+        function renderNextBatch(count) {
+            const nextItems = resolvedItems.slice(renderedCount, renderedCount + count);
+            if (nextItems.length === 0) {
+                if (observer) observer.disconnect();
+                if (sentinel) sentinel.remove();
+                return;
+            }
+
+            const fragment = document.createDocumentFragment();
+            nextItems.forEach((entry) => {
+                fragment.appendChild(createGalleryItem(entry));
+            });
+
+            if (sentinel && sentinel.parentNode === galleryContainer) {
+                galleryContainer.insertBefore(fragment, sentinel);
+            } else {
+                galleryContainer.appendChild(fragment);
+            }
+
+            renderedCount += nextItems.length;
+
+            if (renderedCount >= resolvedItems.length) {
+                if (observer) observer.disconnect();
+                if (sentinel) sentinel.remove();
+            } else if (!sentinel) {
+                sentinel = document.createElement('div');
+                sentinel.className = 'scroll-sentinel';
+                sentinel.setAttribute('aria-hidden', 'true');
+                galleryContainer.appendChild(sentinel);
+
+                observer = new IntersectionObserver(
+                    (entries) => {
+                        if (entries.some((entry) => entry.isIntersecting)) {
+                            renderNextBatch(NEXT_BATCH);
+                        }
+                    },
+                    { rootMargin: '250px 0px' }
+                );
+                observer.observe(sentinel);
+            }
+        }
+
         async function loadImages() {
+            // Show 9 skeleton slots immediately while Drive metadata fetches
+            for (let i = 0; i < INITIAL_BATCH; i++) {
+                const skeleton = document.createElement('div');
+                skeleton.className = 'gallery-item is-loading';
+                galleryContainer.appendChild(skeleton);
+            }
+
             try {
                 const query = `'${FOLDER_ID}' in parents and trashed=false`;
                 const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&spaces=drive&fields=files(id,name)&pageSize=1000&key=${API_KEY}`;
@@ -209,23 +291,15 @@
                     fileMap[file.name] = file.id;
                 });
 
-                images.forEach(({ file, caption }) => {
-                    if (fileMap[file]) {
-                        const driveId = fileMap[file];
-                        const driveUrl = `https://lh3.googleusercontent.com/d/${driveId}=w1000`;
+                resolvedItems = images
+                    .filter(({ file }) => Boolean(fileMap[file]))
+                    .map(({ file, caption }) => ({
+                        driveId: fileMap[file],
+                        caption
+                    }));
 
-                        const item = document.createElement('div');
-                        item.className = 'gallery-item';
-                        item.setAttribute('data-caption', caption);
-
-                        const img = document.createElement('img');
-                        img.src = driveUrl;
-                        img.alt = file;
-
-                        item.appendChild(img);
-                        galleryContainer.appendChild(item);
-                    }
-                });
+                galleryContainer.innerHTML = '';
+                renderNextBatch(INITIAL_BATCH);
             } catch (error) {
                 galleryContainer.innerHTML = `<p style="padding: 40px; color: #666;">Error: ${error.message}</p>`;
             }
